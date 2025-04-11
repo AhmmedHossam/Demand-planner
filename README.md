@@ -1,135 +1,84 @@
 # Demand-planner
 
-1. Demand Forecast
+Step 1: Demand Forecasting
+We will use historical sales data to forecast demand for September. A common forecasting method is Moving Average or Exponential Smoothing.
 
-Step 1: Organize the Data
+Method Selection
+Simple Moving Average (SMA): If demand is stable.
 
-You need to analyze historical weekly sales to project the future demand.
+Exponential Smoothing (ETS): If demand shows trends or seasonality.
 
-Data Columns:
-	•	Product ID
-	•	Product Name
-	•	Number of Orders
-	•	Quantity Ordered (This is the key metric for demand forecasting)
-	•	Untaxed Total
-	•	Quantity On Hand
+Since we have weekly data for 8 months (≈32 weeks), an SMA of the last 4 weeks or ETS in Excel will be appropriate.
 
-Since data spans 8 months of weekly sales (~32 weeks), use that to calculate:
-	•	Average Weekly Demand
-	•	Recent Trend (last 4–8 weeks) if needed
+Steps in Excel
+Insert a new sheet: Name it "Demand Forecast".
 
-⸻
+Use Moving Average Formula:
 
-Step 2: Choose Forecasting Method
+Select the last 4 weeks of Quantity Ordered for each product.
 
-You can use a simple moving average or exponential smoothing, depending on the product’s demand consistency.
+Use the formula:
 
-For simplicity and broad applicability:
+excel
 
-Method: 4-Week Moving Average
+=AVERAGE(OFFSET(INDIRECT("Historical Sales Data!D2"), MATCH(A2, INDIRECT("Historical Sales Data!A:A"), 0)-1, 0, 4, 1))
+This calculates the 4-week moving average.
 
-Use this for short-term prediction if demand patterns are relatively stable.
+Drag the formula down for all products.
 
-Formula (assuming weeks in columns):
+Using Exponential Smoothing (ETS)
 
-=AVERAGE(B2:E2)   <-- for the last 4 weeks
+Use Excel’s built-in ETS function:
 
-If your data is in rows by product and columns by week:
+excel
 
+=FORECAST.ETS(TODAY()+7, D2:D32, B2:B32)
+Replace D2:D32 with the historical sales for that product.
 
-=AVERAGE(B2:E2)   <-- for the last 4 weeks
+Step 2: Safety Stock & Reorder Point Calculation
+We define:
 
-You may also calculate:
+Safety Stock (SS) = (Max weekly demand − Average weekly demand) × Lead Time
 
-Weighted Moving Average (if recent weeks are more important)
+excel
 
-=(0.4*Week4 + 0.3*Week3 + 0.2*Week2 + 0.1*Week1)
+= (MAX(D2:D32) - AVERAGE(D2:D32)) * 5
+Reorder Point (ROP) = (Lead Time × Avg. Weekly Demand) + Safety Stock
 
-Step 3: Forecast for September
+excel
 
-Since September has ~4 weeks, multiply weekly forecast by 4.
+= (5 * AVERAGE(D2:D32)) + SS
+Steps in Excel
+Insert a new sheet: Name it "Replenishment Plan".
 
-Formula:
+Use formulas for SS and ROP for each product.
 
-=Forecasted_Weekly_Demand * 4
+Step 3: Classification into MTS or MTO
+MTS (Make-to-Stock): If demand is consistent.
 
-Create “Demand Forecast” Sheet
+MTO (Make-to-Order): If demand fluctuates significantly.
 
-Columns to include:
-	•	Product ID
-	•	Product Name
-	•	Forecasted Weekly Demand
-	•	Forecasted Monthly Demand
+Formula to Classify
+excel
 
-⸻
+=IF(STDEV(D2:D32)/AVERAGE(D2:D32) < 0.3, "MTS", "MTO")
+If Coefficient of Variation (CV) < 0.3, product is MTS.
 
-2. Replenishment Plan
+Otherwise, it is MTO.
 
-Step 1: Calculate Safety Stock
+Step 4: Replenishment Plan
+To determine the replenishment quantity and order date:
 
-Assumption: Lead time = 5 days (~0.71 weeks)
+Recommended Replenishment Quantity
 
-Safety Stock Formula:
+excel
 
-=Z * σ * √L
+=IF(F2 < G2, G2 - F2, 0)
+If stock (F2 = Quantity on Hand) falls below ROP (G2), we order.
 
-Z = Service level factor (e.g., 1.65 for 95% service level)
+Replenishment Order Date
 
-σ = Standard deviation of weekly demand
+excel
 
-L = Lead time in weeks
-
-In Excel:
-
-=1.65 * STDEV(Week1:WeekN) * SQRT(0.71)
-
-This ensures you’re covered for variability during lead time.
-
-Step 2: Calculate Re-order Point (ROP)
-
-ROP Formula:
-
-= (Average Weekly Demand * Lead Time in weeks) + Safety Stock
-
-In Excel:
-
-=Forecasted_Weekly_Demand * 0.71 + Safety_Stock
-
-Step 3: Calculate Replenishment Quantity
-
-If current stock is below ROP, calculate how much to order
-
-=IF(Quantity_On_Hand < ROP, Forecasted_Monthly_Demand - Quantity_On_Hand, 0)
-
-Step 4: Determine Replenishment Order Date
-
-Assume a 5-day lead time. If stock falls below ROP during a week, plan order 5 days before expected stock-out.
-
-To calculate expected stock-out:
-	•	Use a running stock depletion formula
-	•	Estimate which week you’ll run out
-
-⸻
-
-Step 5: Classify Product (MTS vs MTO)
-
-Basic Criteria.    
-•	MTS: Products with consistent demand (low standard deviation, frequent orders)
-•	MTO: Products with sporadic demand (high variability or low order frequency)
-
-In Excel, use:
-
-=IF(STDEV(Week1:WeekN)/AVERAGE(Week1:WeekN) < 0.5, "MTS", "MTO")
-
-Create “Replenishment Plan” Sheet
-
-Columns:
-
-- Product ID
-- Product Name
-- Forecasted Weekly Demand
-- Quantity On Hand
-- Re-order Point
-- Safety Stock Level
-- Recommended Replenishment Quantity (if stock is projected to fall below the re-order point)
-- Replenishment Order Date
+=IF(H2>0, TODAY(), "")
+If we need to replenish, order today.
